@@ -3,11 +3,12 @@
   <img src="https://raw.githubusercontent.com/PopoolaIbrahim/Grocy-Assistant/main/Web_App/static/grocy_icon.png" height=100>
 </p>
 
-**Grocy Assitant – Offline AI-Powered Grocery Store Assistant**
+**Grocy Assistant – Offline AI-Powered Grocery Store Assistant**
 
 Web App : https://github.io
 
 Mobile App : https//github.io
+
 
 **Abstract**
 
