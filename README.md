@@ -1,9 +1,9 @@
+<img src="https://raw.githubusercontent.com/PopoolaIbrahim/Grocy-Assistant/main/Web_App/static/grocy_icon.png">
 **Grocy Assitant – Offline AI-Powered Grocery Store Assistant**
 
 Deployment : https://github.io
 
 **Abstract**
-<img></img>
 
 Across Africa, millions of small retail shop owners still rely on manual methods for inventory, billing, and customer interaction. GrocyAI is an offline, AI-enabled mobile application designed to transform how grocery shops operate, especially in low-connectivity areas. It harnesses computer vision and conversational AI to deliver a smarter, faster, and more efficient retail experience.
 
