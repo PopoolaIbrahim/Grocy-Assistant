@@ -6,6 +6,7 @@
 **Grocy Assitant – Offline AI-Powered Grocery Store Assistant**
 
 Web App : https://github.io
+
 Mobile App : https//github.io
 
 **Abstract**
