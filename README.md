@@ -7,12 +7,12 @@
 
 Web App : https://github.io
 
-Mobile App : https//github.io
+Mobile App : https://github.io
 
 
 **Abstract**
 
-Across Africa, millions of small retail shop owners still rely on manual methods for inventory, billing, and customer interaction. GrocyAI is an offline, AI-enabled mobile application designed to transform how grocery shops operate, especially in low-connectivity areas. It harnesses computer vision and conversational AI to deliver a smarter, faster, and more efficient retail experience.
+Across Africa, millions of small retail shop owners still rely on manual methods for inventory, billing, and customer interaction. Grocy Assistant is an offline, AI-enabled mobile application designed to transform how grocery shops operate, especially in low-connectivity areas. It harnesses computer vision and conversational AI to deliver a smarter, faster, and more efficient retail experience.
 
 GrocyAI empowers store owners to manage inventory and customer transactions through a seamless barcode scanning system using their smartphone camera. By simply scanning product barcodes, users can quickly add items to their store database or scan purchased items at checkout. The app connects to receipt printers via Bluetooth to issue physical receipts instantly — all without needing an internet connection.
 Beyond scanning, GrocyAI includes a conversational assistant that interacts with the user, providing help with daily tasks like managing product stock, generating sales summaries, or answering common inventory-related questions. This makes it intuitive and accessible, even for users with limited technical experience.
