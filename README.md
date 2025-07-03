@@ -1,6 +1,5 @@
 <p align="center">
-  
-**Grocy Assistant – Offline AI-Powered Grocery Store Assistant**
+  <b>Grocy Assistant – Offline AI-Powered Grocery Store Assistant</b>
 </p>
 
 Web App : https://github.io
