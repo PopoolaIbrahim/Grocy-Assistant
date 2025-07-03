@@ -1,5 +1,4 @@
 <p align="center">
-  <img src="Web_App/static/grocy_icon.png" height='100'>
   <b>Grocy Assistant – Offline AI-Powered Grocery Store Assistant</b>
 </p>
 
