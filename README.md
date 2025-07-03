@@ -1,10 +1,12 @@
 <p align='center'>
+  <img src="data:image/png;base64,YOUR_BASE64_STRING_HERE" alt="Grocy ICON">
   <img src="https://raw.githubusercontent.com/PopoolaIbrahim/Grocy-Assistant/main/Web_App/static/grocy_icon.png" height=100>
 </p>
 
 **Grocy Assitant – Offline AI-Powered Grocery Store Assistant**
 
-Deployment : https://github.io
+Web App : https://github.io
+Mobile App : https//github.io
 
 **Abstract**
 
