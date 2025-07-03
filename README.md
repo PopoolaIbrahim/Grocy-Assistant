@@ -1,4 +1,4 @@
-**Grocy Assitant – Offline AI-Powered Grocery Store Assistan**
+**Grocy Assitant – Offline AI-Powered Grocery Store Assistant**
 
 Deployment : Visit the demo: https://github.io
 
