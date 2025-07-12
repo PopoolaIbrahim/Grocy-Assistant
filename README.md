@@ -1,8 +1,4 @@
-
-<p align="center">
-<b>Grocy Assistant – Offline AI-Powered Grocery Store Management Assistant</b>
-</p>
-
+# Grocy Assistant – Offline AI-Powered Grocery Store Management Assistant
 Web App : https://popoolaibrahim.github.io/Grocy-Assistant
 
 Mobile App : 
@@ -34,7 +30,6 @@ Lightweight and user-friendly UI for mobile phones.
 
 By building GrocyAI, we aim to close the tech gap for local shop owners, boost digital inclusion, and unlock smarter retail experiences across Africa — starting with the smallest stores. With the right support, we envision expanding GrocyAI to support voice in local languages, integrate mobile payment systems, and deploy across multiple African countries.
 
-# Grocy - AI Grocery Store Manager
 
 ## Overview
 
