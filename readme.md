@@ -1,11 +1,11 @@
-<<<<<<< HEAD
+
 <p align="center">
-**Grocy Assistant – Offline AI-Powered Grocery Store Assistant**
+**Grocy Assistant – Offline AI-Powered Grocery Store Management Assistant**
 </p>
 
-Web App : https://github.io
+Web App : https://popoolaibrahim.github.io/Grocy-Assistant
 
-Mobile App : https://github.io
+Mobile App : 
 
 
 **Abstract**
