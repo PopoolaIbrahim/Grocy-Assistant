@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Grocy - AI Grocery Store Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="icon.jpg">
+<! type="image/svg+xml">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="icon.jpg" alt="Grocy" class="sidebar-logo">
+            <h2>Grocy</h2>
+            <button class="sidebar-close" id="sidebar-close">
+                <i data-feather="x"></i>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="#" class="sidebar-nav-item active" data-view="scanner">
+                <i data-feather="camera"></i>
+                Scanner
+            </a>
+            <a href="#" class="sidebar-nav-item" data-view="add-product">
+                <i data-feather="plus-circle"></i>
+                Add Product
+            </a>
+            <a href="#" class="sidebar-nav-item" data-view="inventory">
+                <i data-feather="package"></i>
+                Inventory
+            </a>
+            <a href="#" class="sidebar-nav-item" data-view="chat">
+                <i data-feather="message-circle"></i>
+                Chat with Grocy
+            </a>
+            <a href="#" class="sidebar-nav-item" data-view="settings">
+                <i data-feather="settings"></i>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <p>&copy; 2025 Grocy Assistant</p>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <button class="menu-toggle" id="menu-toggle">
+                    <i data-feather="menu"></i>
+                </button>
+                <h1 class="app-title">
+                    <img src="icon.jpg" alt="Grocy" class="app-icon">
+                    Grocy
+                </h1>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-primary" id="quick-scan">
+                        <i data-feather="camera"></i>
+                        Quick Scan
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Scanner View -->
+            <div class="view scanner-view active" id="scanner-view">
+                <div class="scanner-container">
+                    <div class="scanner-header">
+                        <h2>Barcode Scanner</h2>
+                        <p>Point your camera at a barcode to scan</p>
+                    </div>
+                    
+                    <div class="scanner-controls">
+                        <button id="start-scanner" class="btn btn-primary">
+                            <i data-feather="camera"></i>
+                            Start Scanner
+                        </button>
+                        <button id="stop-scanner" class="btn btn-secondary" style="display: none;">
+                            <i data-feather="camera-off"></i>
+                            Stop Scanner
+                        </button>
+                        <button id="manual-add-product" class="btn btn-secondary">
+                            <i data-feather="plus"></i>
+                            Add Product Manually
+                        </button>
+                    </div>
+
+                    <div id="qr-reader" class="qr-reader"></div>
+                    
+                    <!-- Last Scanned Product -->
+                    <div class="last-scanned-section">
+                        <div class="section-header">
+                            <h3>Last Scanned Product</h3>
+                        </div>
+                        <div class="product-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Barcode:</span>
+                                <span class="detail-value" id="last-barcode">N/A</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Name:</span>
+                                <span class="detail-value" id="last-name">N/A</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Price:</span>
+                                <span class="detail-value" id="last-price">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Bill -->
+                    <div class="current-bill-section">
+                        <div class="section-header">
+                            <h3>Current Bill</h3>
+                        </div>
+                        <div class="bill-details">
+                            <div class="bill-items" id="bill-items">
+                                <!-- Bill items will be added here -->
+                            </div>
+                            <div class="bill-total">
+                                <div class="total-row">
+                                    <span class="total-label">Total Bill:</span>
+                                    <span class="total-value" id="total-bill">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bill-actions">
+                            <button id="print-receipt" class="btn btn-primary">
+                                <i data-feather="printer"></i>
+                                Print Receipt
+                            </button>
+                            <button id="reset-scan" class="btn btn-secondary">
+                                <i data-feather="refresh-cw"></i>
+                                Reset Scan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scan-result" id="scan-result" style="display: none;">
+                        <div class="result-header">
+                            <h3>Scan Result</h3>
+                        </div>
+                        <div class="result-content">
+                            <p><strong>Barcode:</strong> <span id="scanned-barcode"></span></p>
+                            <div id="product-info"></div>
+                        </div>
+                        <div class="result-actions">
+                            <button id="add-to-bill" class="btn btn-primary">Add to Bill</button>
+                            <button id="add-new-product" class="btn btn-secondary">Add New Product</button>
+                            <button id="scan-again" class="btn btn-secondary">Scan Again</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Product View -->
+            <div class="view add-product-view" id="add-product-view">
+                <div class="form-container">
+                    <div class="form-header">
+                        <h2>Add New Product</h2>
+                        <p>Enter product details below</p>
+                    </div>
+
+                    <form id="add-product-form" class="product-form">
+                        <div class="form-group">
+                            <label for="product-barcode">Barcode</label>
+                            <div class="barcode-input-group">
+                                <input type="text" id="product-barcode" name="barcode" placeholder="No Barcode, leave Empty!">
+                                <button type="button" id="scan-barcode-btn" class="btn btn-secondary">
+                                    <i data-feather="camera"></i>
+                                    Scan
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="product-name">Product Name</label>
+                            <input type="text" id="product-name" name="name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="product-category">Category</label>
+                            <select id="product-category" name="category" required>
+                                <option value="">Select Category</option>
+                                <option value="Fruits & Vegetables">Fruits & Vegetables</option>
+                                <option value="Dairy & Eggs">Dairy & Eggs</option>
+                                <option value="Meat & Seafood">Meat & Seafood</option>
+                                <option value="Bakery">Bakery</option>
+                                <option value="Beverages">Beverages</option>
+                                <option value="Snacks">Snacks</option>
+                                <option value="Frozen Foods">Frozen Foods</option>
+                                <option value="Pantry">Pantry</option>
+                                <option value="Canned & Jarred Goods">Canned & Jarred Goods</option>
+                                <option value="Grains, Rice & Pasta">Grains, Rice & Pasta</option>
+                                <option value="Oils, Sauces & Condiments">Oils, Sauces & Condiments</option>
+                                <option value="Breakfast & Cereal">Breakfast & Cereal</option>
+                                <option value="Personal Care">Personal Care</option>
+                                <option value="Household">Household</option>
+                                <option value="Cleaning Supplies">Cleaning Supplies</option>
+                                <option value="Health & Wellness">Health & Wellness</option>
+                                <option value="Baby Products">Baby Products</option>
+                                <option value="Pet Supplies">Pet Supplies</option>
+                                <option value="International Foods">International Foods</option>
+                                <option value="Organic & Natural">Organic & Natural</option>
+                                <option value="Alcoholic Beverages">Alcoholic Beverages</option>
+                                <option value="Tobacco Products">Tobacco Products</option>
+                                <option value="Stationery & Magazines">Stationery & Magazines</option>
+                                <option value="Seasonal Items">Seasonal Items</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product-price">Price (<span class="currency-symbol">$</span>)</label>
+                                <input type="number" id="product-price" name="price" step="0.01" min="0" required placeholder="Enter price in USD">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="product-quantity">Quantity</label>
+                                <input type="number" id="product-quantity" name="quantity" min="0" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="product-description">Description</label>
+                            <textarea id="product-description" name="description" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="save"></i>
+                                Add Product
+                            </button>
+                            <button type="button" id="clear-form" class="btn btn-secondary">
+                                <i data-feather="x-circle"></i>
+                                Clear Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Inventory View -->
+            <div class="view inventory-view" id="inventory-view">
+                <div class="inventory-container">
+                    <div class="inventory-header">
+                        <h2>Product Inventory</h2>
+                        <div class="inventory-actions">
+                            <div class="search-container">
+                                <input type="text" id="search-input" placeholder="Search products...">
+                                <i data-feather="search"></i>
+                            </div>
+                            <button id="export-csv" class="btn btn-primary">
+                                <i data-feather="download"></i>
+                                Export CSV
+                            </button>
+                            <button id="import-csv" class="btn btn-secondary">
+                                <i data-feather="upload"></i>
+                                Import CSV
+                            </button>
+                            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                        </div>
+                    </div>
+
+                    <div class="inventory-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-products">0</div>
+                            <div class="stat-label">Total Products</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-value">$0.00</div>
+                            <div class="stat-label">Total Value</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="low-stock">0</div>
+                            <div class="stat-label">Low Stock</div>
+                        </div>
+                    </div>
+
+                    <div class="product-grid" id="product-grid">
+                        <!-- Products will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat View -->
+            <div class="view chat-view" id="chat-view">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h2>Chat with Grocy</h2>
+                        <p>Ask me anything about your grocery store management!</p>
+                    </div>
+                    
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message grocy-message">
+                            <div class="message-avatar">
+                                <img src="icon.jpg" alt="Grocy">
+                            </div>
+                            <div class="message-content">
+                                <p>Hi! I'm Grocy, your AI grocery store assistant. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <div class="chat-input-group">
+                            <input type="text" id="chat-input" placeholder="Type your message...">
+                            <button id="send-message" class="btn btn-primary">
+                                <i data-feather="send"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div class="view settings-view" id="settings-view">
+                <div class="settings-container">
+                    <div class="settings-header">
+                        <h2>Settings</h2>
+                        <p>Configure your Grocy application</p>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>General Settings</h3>
+                        <div class="setting-item">
+                            <label for="currency-select">Currency</label>
+                            <select id="currency-select">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="low-stock-threshold">Low Stock Threshold</label>
+                            <input type="number" id="low-stock-threshold" min="1" value="10">
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Scanner Settings</h3>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="auto-add-to-bill" checked>
+                                Auto-add scanned products to bill
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="sound-on-scan" checked>
+                                Play sound on successful scan
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Data Management</h3>
+                        <div class="setting-actions">
+                            <button id="backup-data" class="btn btn-primary">
+                                <i data-feather="download"></i>
+                                Backup Data
+                            </button>
+                            <button id="restore-data" class="btn btn-secondary">
+                                <i data-feather="upload"></i>
+                                Restore Data
+                            </button>
+                            <button id="clear-data" class="btn btn-danger">
+                                <i data-feather="trash-2"></i>
+                                Clear All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/init.js"></script>
+</body>
+</html>
