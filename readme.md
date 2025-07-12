@@ -1,6 +1,6 @@
 
 <p align="center">
-**Grocy Assistant – Offline AI-Powered Grocery Store Management Assistant**
+<b>Grocy Assistant – Offline AI-Powered Grocery Store Management Assistant</b>
 </p>
 
 Web App : https://popoolaibrahim.github.io/Grocy-Assistant
