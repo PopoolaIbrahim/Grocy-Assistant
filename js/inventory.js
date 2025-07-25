@@ -11,7 +11,7 @@ class InventoryManager {
 
     init() {
         this.setupEventListeners();
-        this.refreshInventory();
+        this.fetchInventoryFromServer();
         console.log('Inventory Manager initialized');
     }
 
@@ -79,6 +79,26 @@ class InventoryManager {
         const icon = sortBtn.querySelector('i');
         icon.setAttribute('data-feather', this.currentSortDirection === 'asc' ? 'arrow-up' : 'arrow-down');
         feather.replace();
+    }
+
+    async fetchInventoryFromServer() {
+        try {
+            const response = await fetch('/inventory');
+            if (response.ok) {
+                const inventoryData = await response.json();
+                // Update grocyApp products with server data
+                if (window.grocyApp) {
+                    window.grocyApp.products = inventoryData;
+                }
+                this.refreshInventory();
+            } else {
+                console.log('No inventory data found on server');
+                this.refreshInventory();
+            }
+        } catch (error) {
+            console.error('Error fetching inventory from server:', error);
+            this.refreshInventory();
+        }
     }
 
     refreshInventory() {

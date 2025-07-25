@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Grocy - AI Grocery Store Manager</title>
+    <title>GrocyAI - AI Grocery Store Manager</title>
     <link rel="stylesheet" href="css/styles.css">
-<<<<<<< HEAD
     <link rel="icon" href="grocy-icon.png">
-=======
-    <link rel="icon" href="grocy-icon1.png">
->>>>>>> 624d475f901f6ef795bff2d92ece5da82d7bbd21
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.css" rel="stylesheet">
@@ -19,21 +15,17 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-<<<<<<< HEAD
-            <img src="grocy-icon.png" alt="Grocy" class="sidebar-logo">
-=======
-            <img src="grocy-icon1.png" alt="Grocy" class="sidebar-logo">
->>>>>>> 624d475f901f6ef795bff2d92ece5da82d7bbd21
-            <h2>Grocy</h2>
+            <img src="grocy-icon.png" alt="GrocyAI" class="sidebar-logo">
+            <h2>GrocyAI</h2>
             <button class="sidebar-close" id="sidebar-close">
                 <i data-feather="x"></i>
             </button>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="#" class="sidebar-nav-item active" data-view="scanner">
                 <i data-feather="camera"></i>
-                Scanner
+                Checkout
             </a>
             <a href="#" class="sidebar-nav-item" data-view="add-product">
                 <i data-feather="plus-circle"></i>
@@ -52,9 +44,9 @@
                 Settings
             </a>
         </nav>
-        
+
         <div class="sidebar-footer">
-            <p>&copy; 2025 Grocy Assistant</p>
+            <p>&copy; 2025 GrocyAI Assistant</p>
         </div>
     </div>
 
@@ -68,10 +60,13 @@
                 <button class="menu-toggle" id="menu-toggle">
                     <i data-feather="menu"></i>
                 </button>
-                <h1 class="app-title">
-                    <img src="grocy-icon.png" alt="Grocy" class="app-icon">
-                    Grocy
-                </h1>
+                <div class="app-title-container">
+                    <h1 class="app-title">
+                        <img src="grocy-icon.png" alt="GrocyAI" class="app-icon">
+                        GrocyAI
+                    </h1>
+                    <p class="app-slogan">#1 AI App for Grocery Stores and Supermarkets</p>
+                </div>
                 <div class="header-actions">
                     <button class="btn btn-sm btn-primary" id="quick-scan">
                         <i data-feather="camera"></i>
@@ -87,10 +82,10 @@
             <div class="view scanner-view active" id="scanner-view">
                 <div class="scanner-container">
                     <div class="scanner-header">
-                        <h2>Barcode Scanner</h2>
+                        <h2>Checkout</h2>
                         <p>Point your camera at a barcode to scan</p>
                     </div>
-                    
+
                     <div class="scanner-controls">
                         <button id="start-scanner" class="btn btn-primary">
                             <i data-feather="camera"></i>
@@ -107,7 +102,7 @@
                     </div>
 
                     <div id="qr-reader" class="qr-reader"></div>
-                    
+
                     <!-- Last Scanned Product -->
                     <div class="last-scanned-section">
                         <div class="section-header">
@@ -146,13 +141,17 @@
                             </div>
                         </div>
                         <div class="bill-actions">
+                            <button id="process-sale" class="btn btn-success">
+                                <i data-feather="credit-card"></i>
+                                Process Sale
+                            </button>
                             <button id="print-receipt" class="btn btn-primary">
                                 <i data-feather="printer"></i>
                                 Print Receipt
                             </button>
-                            <button id="reset-scan" class="btn btn-secondary">
-                                <i data-feather="refresh-cw"></i>
-                                Reset Scan
+                            <button id="reset-scan" class="btn btn-danger">
+                                <i data-feather="trash-2"></i>
+                                Reset Bill
                             </button>
                         </div>
                     </div>
@@ -312,18 +311,18 @@
                         <h2>Chat with Grocy</h2>
                         <p>Ask me anything about your grocery store management!</p>
                     </div>
-                    
+
                     <div class="chat-messages" id="chat-messages">
                         <div class="message grocy-message">
                             <div class="message-avatar">
-                                <img src="grocy-icon.png" alt="Grocy">
+                                <img src="grocy-icon.png" alt="GrocyAI">
                             </div>
                             <div class="message-content">
-                                <p>Hi! I'm Grocy, your AI grocery store assistant. How can I help you today?</p>
+                                <p>Hi! I'm GrocyAI, your AI grocery store assistant. How can I help you today?</p>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="chat-input-container">
                         <div class="chat-input-group">
                             <input type="text" id="chat-input" placeholder="Type your message...">
@@ -340,7 +339,7 @@
                 <div class="settings-container">
                     <div class="settings-header">
                         <h2>Settings</h2>
-                        <p>Configure your Grocy application</p>
+                        <p>Configure your GrocyAI application</p>
                     </div>
 
                     <div class="settings-section">
@@ -551,6 +550,16 @@
                     </div>
 
                     <div class="settings-section">
+                        <h3>Save Settings</h3>
+                        <div class="setting-actions">
+                            <button id="save-settings" class="btn btn-success">
+                                <i data-feather="save"></i>
+                                Save All Settings
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <h3>Data Management</h3>
                         <div class="setting-actions">
                             <button id="backup-data" class="btn btn-primary">
@@ -575,7 +584,7 @@
     <!-- Scripts -->
     <script src="js/app.js"></script>
     <script src="js/scanner.js"></script>
-    <script src="js/product_inventory.js"></script>
+    <script src="product_inventory.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/init.js"></script>
 </body>

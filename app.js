@@ -56,11 +56,13 @@ class GrocyApp {
             this.addProduct();
         });
         document.getElementById('clear-form').addEventListener('click', () => this.clearForm());
+        document.getElementById('process-sale').addEventListener('click', () => this.processSale());
         document.getElementById('print-receipt').addEventListener('click', () => this.printReceipt());
         document.getElementById('reset-scan').addEventListener('click', () => this.resetBill());
         document.getElementById('backup-data').addEventListener('click', () => this.backupData());
         document.getElementById('restore-data').addEventListener('click', () => this.restoreData());
         document.getElementById('clear-data').addEventListener('click', () => this.clearData());
+        document.getElementById('save-settings').addEventListener('click', () => this.saveAllSettings());
 
         document.getElementById('currency-select').addEventListener('change', (e) => {
             this.settings.currency = e.target.value;
@@ -125,11 +127,15 @@ class GrocyApp {
         }
     }
 
-    addProduct() {
+    async addProduct() {
         const form = document.getElementById('add-product-form');
         const formData = new FormData(form);
+        
+        // Check if we're editing an existing product
+        const editId = form.dataset.editId;
+        
         const product = {
-            id: Date.now().toString(),
+            id: editId || Date.now().toString() + Math.random().toString(36).substr(2, 9),
             barcode: formData.get('barcode') || '',
             name: formData.get('name'),
             category: formData.get('category'),
@@ -139,37 +145,61 @@ class GrocyApp {
             dateAdded: new Date().toISOString()
         };
 
-        if (!product.name || !product.category || !product.price || !product.quantity) {
+        if (!product.name || !product.category || isNaN(product.price) || isNaN(product.quantity)) {
             this.showNotification('Please fill in all required fields', 'error');
             return;
         }
-        if (product.barcode && this.products.some(p => p.barcode === product.barcode)) {
-            this.showNotification('A product with this barcode already exists', 'error');
-            return;
-        }
 
-        fetch('/inventory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(product)
-        })
-        .then(response => {
-            if (!response.ok) return response.text().then(text => { throw new Error(text); });
-            return response.text();
-        })
-        .then(() => {
-            this.inventory.fetchInventory(); 
+        try {
+            if (editId) {
+                // Update existing product
+                const existingIndex = this.products.findIndex(p => p.id === editId);
+                if (existingIndex !== -1) {
+                    this.products[existingIndex] = product;
+                }
+            } else {
+                // Add new product
+                if (product.barcode && this.products.some(p => p.barcode === product.barcode)) {
+                    this.showNotification('A product with this barcode already exists', 'error');
+                    return;
+                }
+                this.products.push(product);
+            }
+
+            // Save to server
+            await this.inventory.saveInventoryToCSV();
+            await this.inventory.fetchInventory();
+            
             this.clearForm();
-            this.showNotification('Product added successfully', 'success');
-        })
-        .catch(error => {
-            console.error('Error adding product:', error);
-            this.showNotification(`Failed to add product: ${error.message || 'Unknown error'}`, 'error');
-        });
+            this.resetAddProductForm();
+            this.showNotification(editId ? 'Product updated successfully' : 'Product added successfully', 'success');
+        } catch (error) {
+            console.error('Error saving product:', error);
+            this.showNotification('Failed to save product', 'error');
+        }
     }
 
     clearForm() {
         document.getElementById('add-product-form').reset();
+    }
+
+    resetAddProductForm() {
+        const form = document.getElementById('add-product-form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const formHeader = document.querySelector('.form-header h2');
+        const formSubHeader = document.querySelector('.form-header p');
+        
+        // Reset form to add mode
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i data-feather="plus"></i> Add Product';
+        }
+        if (formHeader) formHeader.textContent = 'Add Product';
+        if (formSubHeader) formSubHeader.textContent = 'Fill in the product details below';
+        
+        // Remove edit ID
+        delete form.dataset.editId;
+        
+        feather.replace();
     }
 
     addToBill(product, quantity = 1) {
@@ -180,8 +210,6 @@ class GrocyApp {
             return;
         }
 
-        inventoryProduct.quantity = parseInt(inventoryProduct.quantity) - quantity;
-
         const existingItem = this.currentBill.find(item => item.id === product.id);
         if (existingItem) {
             existingItem.quantity += quantity;
@@ -191,8 +219,6 @@ class GrocyApp {
         
         this.updateBillDisplay();
         this.saveCurrentBill();
-        this.inventory.saveInventoryToCSV('/inventory.csv');
-        this.inventory.refreshInventory();
     }
 
     removeFromBill(productId) {
@@ -232,6 +258,43 @@ class GrocyApp {
 
         totalBillElement.textContent = this.formatPrice(total);
         feather.replace();
+    }
+
+    async processSale() {
+        if (this.currentBill.length === 0) {
+            this.showNotification('No items in bill to process', 'warning');
+            return;
+        }
+
+        try {
+            const total = this.currentBill.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            const saleData = {
+                items: this.currentBill,
+                total: total,
+                saleDate: new Date().toISOString()
+            };
+
+            const response = await fetch('/process-sale', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(saleData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Refresh inventory and reset bill
+            await this.inventory.fetchInventory();
+            this.resetBill();
+            this.showNotification('Sale processed successfully', 'success');
+        } catch (error) {
+            console.error('Error processing sale:', error);
+            this.showNotification('Failed to process sale', 'error');
+        }
     }
 
     resetBill() {
@@ -285,6 +348,11 @@ class GrocyApp {
         this.updateCurrencyDisplay();
     }
 
+    saveAllSettings() {
+        this.saveSettings();
+        this.showNotification('Settings saved successfully!', 'success');
+    }
+
     loadSettingsToForm() {
         document.getElementById('currency-select').value = this.settings.currency;
         document.getElementById('low-stock-threshold').value = this.settings.lowStockThreshold;
@@ -320,7 +388,181 @@ class GrocyApp {
         }
         this.updateCurrencySymbols();
     }
-    updateCurrencySymbols() { /* ... */ }
+    updateCurrencySymbols() {
+        const currencySymbols = document.querySelectorAll('.currency-symbol');
+        const symbols = { 
+            'USD': '$', 
+            'EUR': '€', 
+            'GBP': '£',
+            'AED': 'د.إ',
+            'AFN': '؋',
+            'ALL': 'L',
+            'AMD': '֏',
+            'ANG': 'ƒ',
+            'AOA': 'Kz',
+            'ARS': '$',
+            'AUD': 'A$',
+            'AWG': 'ƒ',
+            'AZN': '₼',
+            'BAM': 'KM',
+            'BBD': 'Bds$',
+            'BDT': '৳',
+            'BGN': 'лв',
+            'BHD': '.د.ب',
+            'BIF': 'FBu',
+            'BMD': '$',
+            'BND': 'B$',
+            'BOB': 'Bs.',
+            'BRL': 'R$',
+            'BSD': 'B$',
+            'BTN': 'Nu.',
+            'BWP': 'P',
+            'BYN': 'Br',
+            'BZD': 'BZ$',
+            'CAD': 'C$',
+            'CDF': 'FC',
+            'CHF': 'CHF',
+            'CLP': 'CL$',
+            'CNY': '¥',
+            'COP': 'COL$',
+            'CRC': '₡',
+            'CUP': '₱',
+            'CVE': '$',
+            'CZK': 'Kč',
+            'DJF': 'Fdj',
+            'DKK': 'kr',
+            'DOP': 'RD$',
+            'DZD': 'دج',
+            'EGP': 'E£',
+            'ERN': 'Nfk',
+            'ETB': 'Br',
+            'FJD': 'FJ$',
+            'FKP': '£',
+            'FOK': 'kr',
+            'GEL': '₾',
+            'GGP': '£',
+            'GHS': '₵',
+            'GIP': '£',
+            'GMD': 'D',
+            'GNF': 'FG',
+            'GTQ': 'Q',
+            'GYD': 'G$',
+            'HKD': 'HK$',
+            'HNL': 'L',
+            'HRK': 'kn',
+            'HTG': 'G',
+            'HUF': 'Ft',
+            'IDR': 'Rp',
+            'ILS': '₪',
+            'IMP': '£',
+            'INR': '₹',
+            'IQD': 'ع.د',
+            'IRR': '﷼',
+            'ISK': 'kr',
+            'JEP': '£',
+            'JMD': 'J$',
+            'JOD': 'JD',
+            'JPY': '¥',
+            'KES': 'KSh',
+            'KGS': 'с',
+            'KHR': '៛',
+            'KID': '$',
+            'KMF': 'CF',
+            'KRW': '₩',
+            'KWD': 'KD',
+            'KYD': 'CI$',
+            'KZT': '₸',
+            'LAK': '₭',
+            'LBP': 'ل.ل',
+            'LKR': 'Rs',
+            'LRD': 'L$',
+            'LSL': 'L',
+            'LYD': 'LD',
+            'MAD': 'د.م.',
+            'MDL': 'L',
+            'MGA': 'Ar',
+            'MKD': 'ден',
+            'MMK': 'K',
+            'MNT': '₮',
+            'MOP': 'MOP$',
+            'MRU': 'UM',
+            'MUR': '₨',
+            'MVR': 'Rf',
+            'MWK': 'MK',
+            'MXN': 'MX$',
+            'MYR': 'RM',
+            'MZN': 'MT',
+            'NAD': 'N$',
+            'NGN': '₦',
+            'NIO': 'C$',
+            'NOK': 'kr',
+            'NPR': '₨',
+            'NZD': 'NZ$',
+            'OMR': '﷼',
+            'PAB': 'B/.',
+            'PEN': 'S/.',
+            'PGK': 'K',
+            'PHP': '₱',
+            'PKR': '₨',
+            'PLN': 'zł',
+            'PYG': '₲',
+            'QAR': '﷼',
+            'RON': 'lei',
+            'RSD': 'дин',
+            'RUB': '₽',
+            'RWF': 'FRw',
+            'SAR': '﷼',
+            'SBD': 'SI$',
+            'SCR': '₨',
+            'SDG': 'ج.س.',
+            'SEK': 'kr',
+            'SGD': 'S$',
+            'SHP': '£',
+            'SLL': 'Le',
+            'SOS': 'Sh',
+            'SRD': '$',
+            'SSP': '£',
+            'STN': 'Db',
+            'SYP': '£S',
+            'SZL': 'L',
+            'THB': '฿',
+            'TJS': 'ЅМ',
+            'TMT': 'm',
+            'TND': 'د.ت',
+            'TOP': 'T$',
+            'TRY': '₺',
+            'TTD': 'TT$',
+            'TVD': '$',
+            'TWD': 'NT$',
+            'TZS': 'TSh',
+            'UAH': '₴',
+            'UGX': 'USh',
+            'UYU': '$U',
+            'UZS': 'so\'m',
+            'VES': 'Bs.S',
+            'VND': '₫',
+            'VUV': 'VT',
+            'WST': 'T',
+            'XAF': 'FCFA',
+            'XCD': 'EC$',
+            'XOF': 'CFA',
+            'XPF': '₣',
+            'YER': '﷼',
+            'ZAR': 'R',
+            'ZMW': 'ZK',
+            'ZWL': 'Z$'
+        };
+        
+        currencySymbols.forEach(symbol => {
+            symbol.textContent = symbols[this.settings.currency] || '$';
+        });
+        
+        // Update price input placeholders
+        const priceInput = document.getElementById('product-price');
+        if (priceInput) {
+            priceInput.placeholder = `Enter price in ${this.settings.currency}`;
+        }
+    }
     
     showManualProductSelector() {
         console.log('showManualProductSelector called. Products available:', this.products.length);

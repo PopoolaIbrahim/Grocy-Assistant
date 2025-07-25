@@ -18,14 +18,18 @@ class InventoryManager {
     handleViewActive() {
         console.log('Inventory view activated. Refreshing...');
         // Fetch and display the latest inventory data from the server
- this.fetchInventory(); // Use the new fetchInventory method
+        this.fetchInventory(); // Use the new fetchInventory method
+    }
+
+    filterProducts() {
+        this.sortAndFilter();
     }
 
     setupEventListeners() {
         // Search functionality
         document.getElementById('search-input').addEventListener('input', (e) => {
             this.currentFilter = e.target.value.toLowerCase();
-            this.filterProducts();
+            this.sortAndFilter();
         });
 
         // CSV Import/Export
@@ -256,7 +260,7 @@ class InventoryManager {
         `;
     }
 
-    addProduct(product) {
+    async addProduct(product) {
         if (window.grocyApp && window.grocyApp.products) {
             // Ensure product has a unique ID and dateAdded
             const newProduct = {
@@ -267,26 +271,26 @@ class InventoryManager {
                 price: parseFloat(product.price),
                 quantity: parseInt(product.quantity),
                 description: product.description || '',
-                dateAdded: product.dateAdded || new Date().toISOString() // Add date added
+                dateAdded: product.dateAdded || new Date().toISOString()
             };
 
             // Check if editing an existing product
             if (product.id) {
                  const index = window.grocyApp.products.findIndex(p => p.id === product.id);
                  if (index !== -1) {
-                     window.grocyApp.products[index] = newProduct; // Replace existing product
+                     window.grocyApp.products[index] = newProduct;
                      window.grocyApp.showNotification(`Updated ${newProduct.name}`, 'success');
                  } else {
-                      // Should not happen if editProduct is called correctly
                       window.grocyApp.showNotification('Error updating product', 'error');
                       return;
                  }
             } else {
-                 // Add new product
-                window.grocyApp.products.push(newProduct);
+                 window.grocyApp.products.push(newProduct);
                 window.grocyApp.showNotification(`Added ${newProduct.name} to inventory`, 'success');
             }
             
+            // Save to server
+            await this.saveInventoryToCSV();
             this.refreshInventory();
         }
     }
@@ -298,10 +302,6 @@ class InventoryManager {
             if (product.quantity > 0) {
                 window.grocyApp.addToBill(product);
                 window.grocyApp.showNotification(`Added ${product.name} to bill`, 'success');
-                
-                // Update quantity in inventory
-                product.quantity--;
-                this.refreshInventory();
             } else {
                 window.grocyApp.showNotification('Product out of stock', 'warning');
             }
@@ -344,10 +344,11 @@ class InventoryManager {
         feather.replace();
     }
 
-    deleteProduct(productId) {
+    async deleteProduct(productId) {
         const product = window.grocyApp.products.find(p => p.id === productId);
         if (product && confirm(`Are you sure you want to delete "${product.name}"?`)) {
             window.grocyApp.products = window.grocyApp.products.filter(p => p.id !== productId);
+            await this.saveInventoryToCSV();
             this.refreshInventory();
             window.grocyApp.showNotification('Product deleted successfully', 'success');
         }
@@ -686,6 +687,8 @@ productInventoryStyles.textContent = `
 document.head.appendChild(productInventoryStyles);
 
 // Initialize inventory manager globally
+let productInventoryManager;
 document.addEventListener('DOMContentLoaded', () => {
-    inventoryManager = new InventoryManager();
+    productInventoryManager = new InventoryManager();
+    console.log('Product Inventory Manager initialized and connected to server');
 });

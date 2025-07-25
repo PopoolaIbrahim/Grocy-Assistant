@@ -4,7 +4,7 @@ class ChatAssistant {
         this.chatHistory = [];
         this.isTyping = false;
         this.knowledgeBase = this.buildKnowledgeBase();
-        
+
         this.init();
     }
 
@@ -45,7 +45,7 @@ class ChatAssistant {
     sendMessage() {
         const chatInput = document.getElementById('chat-input');
         const message = chatInput.value.trim();
-        
+
         if (!message || this.isTyping) return;
 
         // Add user message
@@ -64,9 +64,9 @@ class ChatAssistant {
 
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
-        
+
         if (sender === 'grocy') {
-            avatar.innerHTML = '<img src="icon.svg" alt="Grocy">';
+            avatar.innerHTML = '<img src="grocy-icon.png" alt="Grocy">';
         } else {
             avatar.textContent = 'U';
         }
@@ -115,7 +115,7 @@ class ChatAssistant {
 
     generateResponse(message) {
         const lowerMessage = message.toLowerCase();
-        
+
         // Check for specific keywords and generate appropriate responses
         if (this.containsKeywords(lowerMessage, ['hello', 'hi', 'hey', 'greetings'])) {
             return this.getRandomResponse([
@@ -393,23 +393,23 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
 
     getBusinessRecommendations(products, lowStockCount) {
         const recommendations = [];
-        
+
         if (lowStockCount > 0) {
             recommendations.push('• Restock low inventory items');
         }
-        
+
         if (products.length < 10) {
             recommendations.push('• Consider expanding product range');
         }
-        
+
         const avgQuantity = products.reduce((sum, p) => sum + p.quantity, 0) / products.length;
         if (avgQuantity < 5) {
             recommendations.push('• Consider increasing minimum stock levels');
         }
-        
+
         recommendations.push('• Regular inventory audits recommended');
         recommendations.push('• Monitor sales patterns for optimization');
-        
+
         return recommendations.join('\n');
     }
 
@@ -418,7 +418,7 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
         typingDiv.className = 'message grocy-message typing-indicator';
         typingDiv.innerHTML = `
             <div class="message-avatar">
-                <img src="icon.svg" alt="Grocy">
+                <img src="grocy-icon.png" alt="Grocy">
             </div>
             <div class="message-content">
                 <div class="typing-dots">
@@ -428,7 +428,7 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
                 </div>
             </div>
         `;
-        
+
         const chatMessages = document.getElementById('chat-messages');
         chatMessages.appendChild(typingDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -483,14 +483,14 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
 
     restoreChatMessages() {
         const chatMessages = document.getElementById('chat-messages');
-        
+
         // Clear existing messages except welcome message
         const welcomeMessage = chatMessages.querySelector('.grocy-message');
         chatMessages.innerHTML = '';
         if (welcomeMessage) {
             chatMessages.appendChild(welcomeMessage);
         }
-        
+
         // Restore chat history
         this.chatHistory.forEach(message => {
             this.addMessageToDOM(message.content, message.sender, false);
@@ -504,9 +504,9 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
 
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
-        
+
         if (sender === 'grocy') {
-            avatar.innerHTML = '<img src="icon.svg" alt="Grocy">';
+            avatar.innerHTML = '<img src="grocy-icon.png" alt="Grocy">';
         } else {
             avatar.textContent = 'U';
         }
@@ -536,7 +536,7 @@ ${this.getBusinessRecommendations(products, lowStockCount)}`;
         chatMessages.innerHTML = `
             <div class="message grocy-message">
                 <div class="message-avatar">
-                    <img src="icon.svg" alt="Grocy">
+                    <img src="grocy-icon.png" alt="Grocy">
                 </div>
                 <div class="message-content">
                     <p>Hi! I'm Grocy, your AI grocery store assistant. How can I help you today?</p>

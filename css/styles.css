@@ -177,19 +177,34 @@ body {
     background-color: var(--light-color);
 }
 
+.app-title-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .app-title {
     font-size: 1.5rem;
+    font-weight: 700;
     color: var(--primary-color);
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 1;
+    gap: 0.5rem;
+    margin: 0;
 }
 
 .app-icon {
     width: 32px;
     height: 32px;
     border-radius: 4px;
+}
+
+.app-slogan {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0.2rem 0 0 0;
+    text-align: center;
+    font-weight: 500;
 }
 
 .header-actions {
@@ -722,6 +737,16 @@ body {
     flex-wrap: wrap;
 }
 
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
 /* Scan Result Modal */
 .scan-result {
     position: fixed;
@@ -761,53 +786,53 @@ body {
     .header-content {
         padding: 1rem;
     }
-    
+
     .app-title {
         font-size: 1.2rem;
     }
-    
+
     .main-content {
         padding: 1rem;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .inventory-header {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .inventory-actions {
         flex-direction: column;
     }
-    
+
     .search-container input {
         width: 100%;
     }
-    
+
     .bill-actions {
         flex-direction: column;
     }
-    
+
     .form-actions {
         flex-direction: column;
     }
-    
+
     .scanner-controls {
         flex-direction: column;
         align-items: center;
     }
-    
+
     .product-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .inventory-stats {
         grid-template-columns: 1fr;
     }
-    
+
     .setting-actions {
         flex-direction: column;
     }
@@ -818,19 +843,19 @@ body {
         width: 100%;
         left: -100%;
     }
-    
+
     .main-content {
         padding: 0.5rem;
     }
-    
+
     .form-container {
         padding: 1rem;
     }
-    
+
     .result-actions {
         flex-direction: column;
     }
-    
+
     .scan-result {
         width: 95%;
         padding: 1rem;
@@ -846,6 +871,41 @@ body {
     border-radius: 50%;
     border-top-color: #fff;
     animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Scanner Boundary Box */
+.qr-reader.scanning {
+    border: 3px solid #4CAF50 !important;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+    position: relative;
+}
+
+.qr-reader.scanning::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border: 2px dashed #4CAF50;
+    border-radius: 15px;
+    animation: scanner-pulse 2s infinite;
+}
+
+.qr-reader.scan-success {
+    border-color: #2E7D32 !important;
+    box-shadow: 0 0 30px rgba(46, 125, 50, 0.6);
+}
+
+@keyframes scanner-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 @keyframes spin {
@@ -1037,7 +1097,7 @@ body {
         width: 95%;
         padding: 1rem;
     }
-    
+
     .manual-product-item {
         flex-direction: column;
         align-items: flex-start;

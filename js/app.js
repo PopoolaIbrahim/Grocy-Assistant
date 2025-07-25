@@ -10,23 +10,24 @@ class GrocyApp {
             autoAddToBill: true,
             soundOnScan: true
         };
-        
+
         this.init();
     }
 
-    init() {
+    async init() {
         this.loadSettings();
         this.loadProducts();
+        await this.loadProductsFromServer(); // Load from server on startup
         this.loadCurrentBill();
         this.setupEventListeners();
         this.updateUI();
         this.updateCurrencySymbols();
-        
+
         // Initialize components
         this.scanner = new BarcodeScanner();
-        this.inventory = new InventoryManager();
+        // Inventory manager is initialized globally in inventory.js
         this.chat = new ChatAssistant();
-        
+
         console.log('Grocy App initialized');
     }
 
@@ -60,9 +61,9 @@ class GrocyApp {
             this.scanner.startScanning();
         });
 
-        // Manual add product button in scanner
+        // Manual add product button - search inventory first
         document.getElementById('manual-add-product').addEventListener('click', () => {
-            this.showManualProductSelector();
+            this.showProductSearchDialog();
         });
 
         // Add product form
@@ -123,7 +124,7 @@ class GrocyApp {
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        
+
         sidebar.classList.toggle('active');
         overlay.classList.toggle('active');
     }
@@ -131,7 +132,7 @@ class GrocyApp {
     closeSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        
+
         sidebar.classList.remove('active');
         overlay.classList.remove('active');
     }
@@ -166,7 +167,7 @@ class GrocyApp {
     onViewChange(viewName) {
         switch (viewName) {
             case 'inventory':
-                if (this.inventory) this.inventory.refreshInventory();
+                if (window.inventoryManager) window.inventoryManager.fetchInventoryFromServer();
                 break;
             case 'chat':
                 if (this.chat) this.chat.focusInput();
@@ -177,12 +178,15 @@ class GrocyApp {
         }
     }
 
-    addProduct() {
+    async addProduct() {
         const form = document.getElementById('add-product-form');
         const formData = new FormData(form);
-        
+
+        // Check if we're editing an existing product
+        const editId = form.dataset.editId;
+
         const product = {
-            id: Date.now().toString(),
+            id: editId || Date.now().toString() + Math.random().toString(36).substr(2, 9),
             barcode: formData.get('barcode') || '',
             name: formData.get('name'),
             category: formData.get('category'),
@@ -193,43 +197,96 @@ class GrocyApp {
         };
 
         // Validate required fields
-        if (!product.name || !product.category || !product.price || !product.quantity) {
+        if (!product.name || !product.category || isNaN(product.price) || isNaN(product.quantity)) {
             this.showNotification('Please fill in all required fields', 'error');
             return;
         }
 
         // Check for duplicate barcode
-        if (product.barcode && this.products.some(p => p.barcode === product.barcode)) {
+        if (product.barcode && this.products.some(p => p.barcode === product.barcode && p.id !== editId)) {
             this.showNotification('A product with this barcode already exists', 'error');
             return;
         }
 
-        // Add product
-        this.products.push(product);
-        this.saveProducts();
-        this.clearForm();
-        this.showNotification('Product added successfully', 'success');
-        
-        // Update CSV file
-        this.updateCSVFile();
+        try {
+            // Send product to server
+            const response = await fetch('/add-product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(product)
+            });
+
+            if (response.ok) {
+                // Update local products array
+                if (editId) {
+                    const existingIndex = this.products.findIndex(p => p.id === editId);
+                    if (existingIndex !== -1) {
+                        this.products[existingIndex] = product;
+                    }
+                } else {
+                    this.products.push(product);
+                }
+
+                this.saveProducts();
+                this.clearForm();
+                this.resetAddProductForm();
+                this.showNotification(editId ? 'Product updated successfully' : 'Product added successfully', 'success');
+
+                // Reload products from server to sync with CSV
+                await this.loadProductsFromServer();
+
+                // Refresh inventory if it exists
+                if (window.inventoryManager) {
+                    window.inventoryManager.fetchInventory();
+                }
+            } else {
+                throw new Error('Failed to save product to server');
+            }
+        } catch (error) {
+            console.error('Error saving product:', error);
+            this.showNotification('Failed to save product', 'error');
+        }
     }
 
     clearForm() {
         document.getElementById('add-product-form').reset();
     }
 
-    addToBill(product, quantity = 1) {
+    resetAddProductForm() {
+        const form = document.getElementById('add-product-form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        // Reset form mode
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i data-feather="plus"></i> Add Product';
+        }
+
+        // Remove edit ID
+        delete form.dataset.editId;
+
+        // Update form header
+        const formHeader = document.querySelector('.form-header h2');
+        const formSubHeader = document.querySelector('.form-header p');
+        if (formHeader) formHeader.textContent = 'Add New Product';
+        if (formSubHeader) formSubHeader.textContent = 'Fill in product details below';
+
+        feather.replace();
+    }
+
+    addToBill(product) {
         const existingItem = this.currentBill.find(item => item.id === product.id);
-        
+
         if (existingItem) {
-            existingItem.quantity += quantity;
+            existingItem.quantity++;
         } else {
             this.currentBill.push({
                 ...product,
-                quantity: quantity
+                quantity: 1
             });
         }
-        
+
         this.updateBillDisplay();
         this.saveCurrentBill();
     }
@@ -243,7 +300,7 @@ class GrocyApp {
     updateBillDisplay() {
         const billItemsContainer = document.getElementById('bill-items');
         const totalBillElement = document.getElementById('total-bill');
-        
+
         if (!billItemsContainer || !totalBillElement) return;
 
         // Clear existing items
@@ -275,7 +332,7 @@ class GrocyApp {
 
         // Update total
         totalBillElement.textContent = this.formatPrice(total);
-        
+
         // Re-initialize feather icons
         feather.replace();
     }
@@ -298,14 +355,14 @@ class GrocyApp {
         printWindow.document.write(receipt);
         printWindow.document.close();
         printWindow.print();
-        
+
         this.showNotification('Receipt sent to printer', 'success');
     }
 
     generateReceipt() {
         const now = new Date();
         let total = 0;
-        
+
         let receiptHTML = `
             <html>
             <head>
@@ -427,13 +484,24 @@ class GrocyApp {
         }
     }
 
+    async loadProductsFromServer() {
+        try {
+            const response = await fetch('/inventory');
+            if (response.ok) {
+                const inventoryData = await response.json();
+                this.products = inventoryData;
+                this.saveProducts(); // Update localStorage
+            }
+        } catch (error) {
+            console.error('Error loading products from server:', error);
+        }
+    }
+
     saveProducts() {
         localStorage.setItem('grocy-products', JSON.stringify(this.products));
-        // Update CSV file whenever products are saved
-        this.updateCSVFile();
         // Refresh inventory if it exists
-        if (this.inventory) {
-            this.inventory.refreshInventory();
+        if (window.inventoryManager) {
+            window.inventoryManager.refreshInventory();
         }
     }
 
@@ -469,31 +537,7 @@ class GrocyApp {
         }
     }
 
-    updateCSVFile() {
-        const csvData = this.products.map(product => ({
-            barcode: product.barcode,
-            name: product.name,
-            category: product.category,
-            price: product.price,
-            quantity: product.quantity,
-            description: product.description
-        }));
 
-        const csv = Papa.unparse(csvData);
-        this.downloadCSV(csv, 'add_products.csv');
-    }
-
-    downloadCSV(csv, filename) {
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
 
     backupData() {
         const backupData = {
@@ -510,7 +554,7 @@ class GrocyApp {
         link.download = `grocy-backup-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         URL.revokeObjectURL(url);
-        
+
         this.showNotification('Data backup downloaded', 'success');
     }
 
@@ -527,11 +571,11 @@ class GrocyApp {
                         const backupData = JSON.parse(e.target.result);
                         this.products = backupData.products || [];
                         this.settings = { ...this.settings, ...backupData.settings };
-                        
+
                         this.saveProducts();
                         this.saveSettings();
                         this.updateUI();
-                        
+
                         this.showNotification('Data restored successfully', 'success');
                     } catch (error) {
                         this.showNotification('Invalid backup file', 'error');
@@ -553,11 +597,11 @@ class GrocyApp {
                 autoAddToBill: true,
                 soundOnScan: true
             };
-            
+
             localStorage.removeItem('grocy-products');
             localStorage.removeItem('grocy-current-bill');
             localStorage.removeItem('grocy-settings');
-            
+
             this.updateUI();
             this.showNotification('All data cleared', 'success');
         }
@@ -579,20 +623,20 @@ class GrocyApp {
             this.inventory.updateStats();
             this.inventory.renderProducts();
         }
-        
+
         // Update currency symbols on forms
         this.updateCurrencySymbols();
     }
-    
+
     updateCurrencySymbols() {
         const symbols = {
             'USD': '$',
             'EUR': '€',
             'GBP': '£'
         };
-        
+
         const currentSymbol = symbols[this.settings.currency] || '$';
-        
+
         // Update price labels in add product form
         const priceLabels = document.querySelectorAll('.price-label, .currency-symbol');
         priceLabels.forEach(label => {
@@ -600,7 +644,7 @@ class GrocyApp {
                 label.textContent = currentSymbol;
             }
         });
-        
+
         // Update placeholder text
         const priceInput = document.getElementById('product-price');
         if (priceInput) {
@@ -631,14 +675,14 @@ class GrocyApp {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // Add event listeners
         modal.querySelector('#product-search').addEventListener('input', (e) => {
             this.filterManualProducts(e.target.value);
         });
-        
+
         feather.replace();
     }
 
@@ -646,7 +690,7 @@ class GrocyApp {
         if (this.products.length === 0) {
             return '<p class="no-products">No products available. Add products first!</p>';
         }
-        
+
         return this.products.map(product => `
             <div class="manual-product-item" onclick="grocyApp.addProductToBillFromModal('${product.id}')">
                 <div class="product-info">
@@ -669,7 +713,7 @@ class GrocyApp {
             product.name.toLowerCase().includes(query.toLowerCase()) ||
             product.category.toLowerCase().includes(query.toLowerCase())
         );
-        
+
         if (filteredProducts.length === 0) {
             productList.innerHTML = '<p class="no-products">No products match your search.</p>';
         } else {
@@ -697,11 +741,11 @@ class GrocyApp {
             if (product.quantity > 0) {
                 this.addToBill(product);
                 this.showNotification(`Added ${product.name} to bill`, 'success');
-                
+
                 // Update quantity in inventory
                 product.quantity--;
                 this.saveProducts();
-                
+
                 // Close modal
                 const modal = document.querySelector('.manual-product-modal');
                 if (modal) {
@@ -711,5 +755,132 @@ class GrocyApp {
                 this.showNotification('Product out of stock', 'warning');
             }
         }
+    }
+
+    showProductSearchDialog() {
+        const searchTerm = prompt('Enter product name or barcode to search:');
+        if (searchTerm) {
+            this.searchProductInInventory(searchTerm);
+        }
+    }
+
+    async searchProductInInventory(searchTerm) {
+        try {
+            const response = await fetch('/search-product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ searchTerm: searchTerm })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.product) {
+                    const addToCart = confirm(`Found: ${result.product.name} - $${result.product.price}\nStock: ${result.product.quantity}\n\nAdd to bill?`);
+                    if (addToCart) {
+                        this.addToBill(result.product);
+                    }
+                } else {
+                    const createNew = confirm('Product not found in inventory. Would you like to add a new product?');
+                    if (createNew) {
+                        this.switchView('add-product');
+                        document.getElementById('product-name').value = searchTerm;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error searching product:', error);
+            this.showNotification('Error searching product', 'error');
+        }
+    }
+
+    async printReceipt() {
+        if (this.currentBill.length === 0) {
+            this.showNotification('No items in bill to print', 'warning');
+            return;
+        }
+
+        try {
+            // Send sale data to server
+            const saleData = {
+                items: this.currentBill,
+                total: this.currentBill.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                saleDate: new Date().toISOString()
+            };
+
+            const response = await fetch('/process-sale', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(saleData)
+            });
+
+            if (response.ok) {
+                // Create and print receipt
+                this.generateReceipt();
+                this.showNotification('Receipt printed and inventory updated', 'success');
+                this.resetBill();
+            } else {
+                throw new Error('Failed to process sale');
+            }
+        } catch (error) {
+            console.error('Error processing sale:', error);
+            this.showNotification('Error processing sale', 'error');
+        }
+    }
+
+    generateReceipt() {
+        const receiptWindow = window.open('', '_blank');
+        const total = this.currentBill.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        receiptWindow.document.write(`
+            <html>
+                <head>
+                    <title>Receipt</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .receipt { max-width: 400px; margin: 0 auto; }
+                        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                        .item { display: flex; justify-content: space-between; margin: 5px 0; }
+                        .total { border-top: 2px solid #000; padding-top: 10px; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="receipt">
+                        <div class="header">
+                            <h2>Grocy Store</h2>
+                            <p>Date: ${new Date().toLocaleDateString()}</p>
+                            <p>Time: ${new Date().toLocaleTimeString()}</p>
+                        </div>
+                        <div class="items">
+                            ${this.currentBill.map(item => `
+                                <div class="item">
+                                    <span>${item.name} x${item.quantity}</span>
+                                    <span>${this.formatPrice(item.price * item.quantity)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="total">
+                            <div class="item">
+                                <span>TOTAL:</span>
+                                <span>${this.formatPrice(total)}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <p>Thank you for shopping with us!</p>
+                        </div>
+                    </div>
+                    <script>window.print(); window.close();</script>
+                </body>
+            </html>
+        `);
+    }
+
+    resetBill() {
+        this.currentBill = [];
+        this.updateBillDisplay();
+        this.showNotification('Bill reset', 'info');
     }
 }

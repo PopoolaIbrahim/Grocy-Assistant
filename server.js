@@ -1,185 +1,286 @@
+
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const csv = require('csv-parser');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-const multer = require('multer');
+const cors = require('cors');
 
 const app = express();
-const port = 3000;
+const PORT = 5000;
 
-app.use(express.static(path.join(__dirname, '/')));
+app.use(cors());
 app.use(express.json());
-app.use(express.text({ type: 'text/csv' })); // Enable raw text body parsing for CSV
+app.use(express.static('.'));
 
-// GET /inventory: Read inventory.csv and return as JSON
+// Serve the main HTML file
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Get inventory from CSV
 app.get('/inventory', (req, res) => {
-  const results = [];
-  fs.createReadStream(path.join(__dirname, 'inventory.csv'))
-    .pipe(csv())
-    .on('data', (data) => results.push(data))
-    .on('end', () => {
-      res.json(results);
-    })
-    .on('error', (err) => {
-      console.error('Error reading inventory.csv:', err);
-      // If file does not exist, return empty array instead of 500 error
-      if (err.code === 'ENOENT') {
-        res.status(404).json([]); // Return empty array if file not found
-      } else {
-        res.status(500).send('Error reading inventory data');
-      }
-    });
-});
-
-// POST /inventory: Add a new product to inventory.csv (for single product add)
-app.post('/inventory', (req, res) => {
-  const newProduct = req.body;
-
-  if (!newProduct || !newProduct.id || !newProduct.barcode || !newProduct.name || !newProduct.category || !newProduct.price || !newProduct.quantity || !newProduct.description || !newProduct.dateAdded) {
-    return res.status(400).send('Missing required product data');
-  }
-
-  const csvWriter = createCsvWriter({
-    path: path.join(__dirname, 'inventory.csv'),
-    header: [
-      { id: 'id', title: 'id' }, { id: 'barcode', title: 'barcode' }, { id: 'name', title: 'name' }, { id: 'category', title: 'category' }, { id: 'price', title: 'price' }, { id: 'quantity', title: 'quantity' }, { id: 'description', title: 'description' }, { id: 'dateAdded', title: 'dateAdded' }
-    ],
-    append: true
-  });
-
-  csvWriter.writeRecords([newProduct])
-    .then(() => res.status(201).send('Product added successfully'))
-    .catch((err) => {
-      console.error('Error writing to inventory.csv:', err);
-      res.status(500).send('Error adding product');
-    });
-});
-
-// POST /save-inventory: Save the entire inventory to inventory.csv
-app.post('/save-inventory', (req, res) => {
-  const csvContent = req.body; // Raw CSV content
-
-  if (!csvContent) {
-    return res.status(400).send('No CSV content provided');
-  }
-
-  fs.writeFile(path.join(__dirname, 'inventory.csv'), csvContent, 'utf8', (err) => {
-    if (err) {
-      console.error('Error writing inventory.csv:', err);
-      return res.status(500).send('Error saving inventory data');
+    const inventoryPath = path.join(__dirname, 'inventory.csv');
+    
+    if (!fs.existsSync(inventoryPath)) {
+        return res.json([]);
     }
-    res.status(200).send('Inventory saved successfully');
-  });
-});
-
-// Configure multer for file uploads
-const upload = multer({ dest: '/tmp/csvuploads/' });
-
-// POST /inventory/import: Import data from a CSV file
-app.post('/inventory/import', upload.single('csvFile'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).send('No file uploaded.');
-  }
-
-  const results = [];
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on('data', (data) => results.push(data))
-    .on('end', () => {
-      const csvWriter = createCsvWriter({
-        path: path.join(__dirname, 'inventory.csv'),
-        header: Object.keys(results[0]).map(key => ({ id: key, title: key }))
-      });
-
-      csvWriter.writeRecords(results)
-        .then(() => res.status(200).send('Inventory imported successfully.'))
-        .catch((err) => {
-          console.error('Error writing imported data to inventory.csv:', err);
-          res.status(500).send('Error importing inventory data.');
+    
+    const products = [];
+    fs.createReadStream(inventoryPath)
+        .pipe(csv())
+        .on('data', (row) => {
+            if (row.name && row.name.trim()) {
+                products.push({
+                    id: row.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    barcode: row.barcode || '',
+                    name: row.name.trim(),
+                    category: row.category || 'Uncategorized',
+                    price: parseFloat(row.price) || 0,
+                    quantity: parseInt(row.quantity) || 0,
+                    description: row.description || '',
+                    dateAdded: row.dateAdded || new Date().toISOString()
+                });
+            }
+        })
+        .on('end', () => {
+            res.json(products);
+        })
+        .on('error', (error) => {
+            console.error('Error reading inventory:', error);
+            res.status(500).json({ error: 'Failed to read inventory' });
         });
-    })
-    .on('error', (err) => {
-      console.error('Error reading uploaded CSV file:', err);
-      res.status(500).send('Error processing uploaded file.');
-    });
 });
 
-// PUT /inventory/:id: Update a product by ID
-app.put('/inventory/:id', (req, res) => {
-  const salesData = req.body.salesData;
-  const productId = req.params.id;
-  const updatedProductData = req.body;
-
-  const inventoryPath = path.join(__dirname, 'inventory.csv');
-  const results = [];
-  fs.createReadStream(inventoryPath)
-    .pipe(csv())
-    .on('data', (data) => results.push(data))
-    .on('end', () => {
-      const productIndex = results.findIndex(product => product.id === productId);
-
-      if (productIndex === -1) {
-        return res.status(404).send('Product not found.');
-      }
-
-      if (salesData) {
-        const saleId = generateUniqueId();
-        const saleDate = new Date().toISOString();
-
-        const salesRecord = {
-          saleId: saleId,
-          productId: productId,
-          quantitySold: salesData.quantitySold,
-          saleDate: saleDate,
-          totalPrice: salesData.totalPrice,
-          id: results[productIndex].id,
-          barcode: results[productIndex].barcode,
-          name: results[productIndex].name,
-          category: results[productIndex].category,
-          price: results[productIndex].price,
-          quantity: results[productIndex].quantity,
-          description: results[productIndex].description,
-        };
-        appendSalesRecord(salesRecord);
-      }
-
-      results[productIndex] = { ...results[productIndex], ...updatedProductData };
-
-      const csvWriter = createCsvWriter({
-        path: inventoryPath,
-        header: Object.keys(results[0]).map(key => ({ id: key, title: key })),
-      });
-
-      csvWriter.writeRecords(results)
-        .then(() => res.status(200).send('Product updated successfully.'))
-        .catch((err) => {
-          console.error('Error writing updated data to inventory.csv:', err);
-          res.status(500).send('Error updating product data.');
+// Search for product by barcode or name
+app.post('/search-product', (req, res) => {
+    const { barcode, searchTerm } = req.body;
+    const inventoryPath = path.join(__dirname, 'inventory.csv');
+    
+    if (!fs.existsSync(inventoryPath)) {
+        return res.json({ product: null });
+    }
+    
+    const products = [];
+    fs.createReadStream(inventoryPath)
+        .pipe(csv())
+        .on('data', (row) => {
+            if (row.name && row.name.trim()) {
+                products.push({
+                    id: row.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    barcode: row.barcode || '',
+                    name: row.name.trim(),
+                    category: row.category || 'Uncategorized',
+                    price: parseFloat(row.price) || 0,
+                    quantity: parseInt(row.quantity) || 0,
+                    description: row.description || '',
+                    dateAdded: row.dateAdded || new Date().toISOString()
+                });
+            }
+        })
+        .on('end', () => {
+            let foundProduct = null;
+            
+            if (barcode) {
+                foundProduct = products.find(p => p.barcode === barcode);
+            } else if (searchTerm) {
+                foundProduct = products.find(p => 
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    p.barcode === searchTerm
+                );
+            }
+            
+            res.json({ product: foundProduct });
+        })
+        .on('error', (error) => {
+            console.error('Error searching product:', error);
+            res.status(500).json({ error: 'Failed to search product' });
         });
+});
+
+// Add single product to inventory
+app.post('/add-product', async (req, res) => {
+    try {
+        const productData = req.body;
+        const inventoryPath = path.join(__dirname, 'inventory.csv');
+        
+        // Read current inventory
+        const products = [];
+        if (fs.existsSync(inventoryPath)) {
+            await new Promise((resolve, reject) => {
+                fs.createReadStream(inventoryPath)
+                    .pipe(csv())
+                    .on('data', (row) => {
+                        if (row.name && row.name.trim()) {
+                            products.push({
+                                id: row.id,
+                                barcode: row.barcode || '',
+                                name: row.name.trim(),
+                                category: row.category || 'Uncategorized',
+                                price: parseFloat(row.price) || 0,
+                                quantity: parseInt(row.quantity) || 0,
+                                description: row.description || '',
+                                dateAdded: row.dateAdded || new Date().toISOString()
+                            });
+                        }
+                    })
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+        }
+        
+        // Check if this is an update or new product
+        const existingIndex = products.findIndex(p => p.id === productData.id);
+        
+        if (existingIndex !== -1) {
+            // Update existing product
+            products[existingIndex] = productData;
+        } else {
+            // Add new product
+            products.push(productData);
+        }
+        
+        // Write updated inventory
+        const csvWriter = createCsvWriter({
+            path: inventoryPath,
+            header: [
+                { id: 'id', title: 'id' },
+                { id: 'barcode', title: 'barcode' },
+                { id: 'name', title: 'name' },
+                { id: 'category', title: 'category' },
+                { id: 'price', title: 'price' },
+                { id: 'quantity', title: 'quantity' },
+                { id: 'description', title: 'description' },
+                { id: 'dateAdded', title: 'dateAdded' }
+            ]
+        });
+        
+        await csvWriter.writeRecords(products);
+        res.json({ message: existingIndex !== -1 ? 'Product updated successfully' : 'Product added successfully' });
+        
+    } catch (error) {
+        console.error('Error adding/updating product:', error);
+        res.status(500).json({ error: 'Failed to add/update product' });
+    }
+});
+
+// Save inventory to CSV
+app.post('/save-inventory', (req, res) => {
+    const inventoryPath = path.join(__dirname, 'inventory.csv');
+    const csvContent = req.body;
+    
+    fs.writeFile(inventoryPath, csvContent, (err) => {
+        if (err) {
+            console.error('Error saving inventory:', err);
+            res.status(500).json({ error: 'Failed to save inventory' });
+        } else {
+            res.json({ message: 'Inventory saved successfully' });
+        }
     });
 });
 
-function appendSalesRecord(record) {
-  const salesPath = path.join(__dirname, 'sales.csv');
-  const csvWriter = createCsvWriter({
-    path: salesPath,
-    header: [
-      { id: 'saleId', title: 'saleId' }, { id: 'productId', title: 'productId' }, { id: 'quantitySold', title: 'quantitySold' }, { id: 'saleDate', title: 'saleDate' }, { id: 'totalPrice', title: 'totalPrice' }, { id: 'id', title: 'id' }, { id: 'barcode', title: 'barcode' }, { id: 'name', title: 'name' }, { id: 'category', title: 'category' }, { id: 'price', title: 'price' }, { id: 'quantity', title: 'quantity' }, { id: 'description', title: 'description' }
-    ],
-    append: true
-  });
+// Process sale - update inventory and add to sales
+app.post('/process-sale', async (req, res) => {
+    try {
+        const { items, total, saleDate } = req.body;
+        const inventoryPath = path.join(__dirname, 'inventory.csv');
+        const salesPath = path.join(__dirname, 'sales.csv');
+        
+        // Read current inventory
+        const products = [];
+        if (fs.existsSync(inventoryPath)) {
+            await new Promise((resolve, reject) => {
+                fs.createReadStream(inventoryPath)
+                    .pipe(csv())
+                    .on('data', (row) => {
+                        if (row.name && row.name.trim()) {
+                            products.push({
+                                id: row.id,
+                                barcode: row.barcode || '',
+                                name: row.name.trim(),
+                                category: row.category || 'Uncategorized',
+                                price: parseFloat(row.price) || 0,
+                                quantity: parseInt(row.quantity) || 0,
+                                description: row.description || '',
+                                dateAdded: row.dateAdded || new Date().toISOString()
+                            });
+                        }
+                    })
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+        }
+        
+        // Update inventory quantities
+        items.forEach(saleItem => {
+            const product = products.find(p => p.id === saleItem.id);
+            if (product) {
+                product.quantity = Math.max(0, product.quantity - saleItem.quantity);
+            }
+        });
+        
+        // Write updated inventory
+        const inventoryCsvWriter = createCsvWriter({
+            path: inventoryPath,
+            header: [
+                { id: 'id', title: 'id' },
+                { id: 'barcode', title: 'barcode' },
+                { id: 'name', title: 'name' },
+                { id: 'category', title: 'category' },
+                { id: 'price', title: 'price' },
+                { id: 'quantity', title: 'quantity' },
+                { id: 'description', title: 'description' },
+                { id: 'dateAdded', title: 'dateAdded' }
+            ]
+        });
+        
+        await inventoryCsvWriter.writeRecords(products);
+        
+        // Add to sales CSV
+        const saleId = Date.now().toString();
+        const salesData = items.map(item => ({
+            saleId: saleId,
+            productId: item.id,
+            quantitySold: item.quantity,
+            saleDate: saleDate,
+            totalPrice: item.price * item.quantity,
+            id: item.id,
+            barcode: item.barcode || '',
+            name: item.name,
+            category: item.category,
+            price: item.price,
+            quantity: item.quantity,
+            description: item.description || ''
+        }));
+        
+        const salesCsvWriter = createCsvWriter({
+            path: salesPath,
+            header: [
+                { id: 'saleId', title: 'saleId' },
+                { id: 'productId', title: 'productId' },
+                { id: 'quantitySold', title: 'quantitySold' },
+                { id: 'saleDate', title: 'saleDate' },
+                { id: 'totalPrice', title: 'totalPrice' },
+                { id: 'id', title: 'id' },
+                { id: 'barcode', title: 'barcode' },
+                { id: 'name', title: 'name' },
+                { id: 'category', title: 'category' },
+                { id: 'price', title: 'price' },
+                { id: 'quantity', title: 'quantity' },
+                { id: 'description', title: 'description' }
+            ],
+            append: fs.existsSync(salesPath)
+        });
+        
+        await salesCsvWriter.writeRecords(salesData);
+        
+        res.json({ message: 'Sale processed successfully' });
+    } catch (error) {
+        console.error('Error processing sale:', error);
+        res.status(500).json({ error: 'Failed to process sale' });
+    }
+});
 
-  csvWriter.writeRecords([record])
-    .catch((err) => {
-      console.error('Error writing to sales.csv:', err);
-    });
-}
-
-function generateUniqueId() {
-  return '_' + Math.random().toString(36).substr(2, 9);
-}
-
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
